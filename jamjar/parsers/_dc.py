@@ -60,8 +60,8 @@ class DCParser(BaseParser):
                     # Add to database
                     x_target = self.db.get_target(x)
 
-                    # Set rebuilt flag and reason
-                    x_target.set_rebuilt_exist()
+                    # Set rebuilt flag
+                    x_target.set_rebuilt()
 
                     if debug_flag == True:
                         print(x_target.rebuild_info)
