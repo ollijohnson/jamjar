@@ -9,10 +9,12 @@
 __all__ = ()
 
 
+import os.path
 import unittest
 
 from .. import database
 from .. import parsers
+
 
 class DdParserTest(unittest.TestCase):
     """Tests for the jam dd parser"""
@@ -20,13 +22,15 @@ class DdParserTest(unittest.TestCase):
     def setUp(self):
         self._db = database.Database()
         self._dd_parser = parsers.DDParser(self._db)
+        self._logdir = os.path.join(os.path.dirname(__file__), "example_log")
 
     def tearDown(self):
         self._db = None
 
     def test_parse_file(self):
         """Test the file parsing."""
-        foo_a = self._dd_parser.parse_logfile("jamjar/test/example_log/example_dd.log")
+        self._dd_parser.parse_logfile(
+            os.path.join(self._logdir, "example_dd.log"))
 
         # Check the expected targets are in the db
         targets = list(self._db.find_targets("p"))

@@ -5,6 +5,7 @@
 #------------------------------------------------------------------------------
 
 import re, collections
+
 import jamjar.ui as ui
 
 class Database:
