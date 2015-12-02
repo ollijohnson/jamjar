@@ -77,6 +77,10 @@ class Target:
 
         Set of targets that include this target.
 
+    .. attribute:: timestamp_chain
+
+        Sequence of targets that this target inherits its timestamp from.
+
     """
 
     def __init__(self, name):
@@ -89,6 +93,7 @@ class Target:
         self.binding = None
         self.rebuilt = False
         self.rebuild_info = RebuildInfo()
+        self.timestamp_chain = []
 
     def __repr__(self):
         return "{}({})".format(type(self).__name__, self.name)

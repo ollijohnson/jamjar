@@ -178,7 +178,12 @@ class TargetSubmode(_BaseCmd):
         self._print_targets(self.target.incs)
         print("included by:")
         self._print_targets(self.target.incs_rev)
-        print("timestamp:", self.target.timestamp)
+        if self.target.timestamp_chain:
+            print("timestamp:", self.target.timestamp_chain[-1].timestamp)
+            print("timestamp inherited from:")
+            self._print_targets(self.target.timestamp_chain)
+        else:
+            print("timestamp:", self.target.timestamp)
         print("binding:", self.target.binding)
         print("rebuilt:", self.target.rebuilt)
         if self.target.rebuilt:

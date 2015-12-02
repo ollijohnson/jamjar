@@ -18,6 +18,13 @@ from ._base import BaseParser
 
 
 class DCParser(BaseParser):
+    """Parser for '-dc' debug output."""
+
+    # Are a series of 'inherits timestamp' lines expected next?
+    _timestamp_chain_follows = False
+    # Target that owns the following timestamp chain.
+    _timestamp_chain_owner = None
+
     def parse_logfile(self, filename):
         """
         Function which will read log files with '-dc' debug output.
@@ -31,55 +38,79 @@ class DCParser(BaseParser):
 
         with open(filename) as f:
             for line in f:
-                words = line.split()
+                # Are there a series of timestamp lines to parse?
+                if self._timestamp_chain_follows:
+                    while line.split(maxsplit=1)[1].startswith(
+                                                    "inherits timestamp from"):
+                        self._parse_timestamp_line(line)
+                        try:
+                            line = next(f)
+                        except StopIteration:
+                            break
+                    self._timestamp_chain_follows = False
+                    self._timestamp_chain_owner = None
 
-                if len(words) >= 6 and words[0] == "Rebuilding" and words[2] == "dependency":
-                    x = words[1].split('\"')[1]
-                    y = words[3].split('\"')[1]
-                    if debug_flag == True:
-                        print("rebuilt {} dependency {} updated".format(x, y))
+                line = line.strip()
+                if line.startswith("Rebuilding"):
+                    self._parse_rebuilding_line(line)
 
-                    # Add to database
-                    x_target = self.db.get_target(x)
-                    y_target = self.db.get_target(y)
+    def _strip_quoted_target(self, word):
+        """Strip quotes from a target name."""
+        if word[-1] == ":":
+            word = word[:-1]
+        assert word[0] == word[-1] == '"'
+        return word[1:-1]
 
-                    # Check that y is in list of dependencies of x, update if not
-                    x_target.add_dependency(y_target)
+    def _target_from_quoted_name(self, word):
+        """Obtain a target object from a quoted name."""
+        name = self._strip_quoted_target(word)
+        return self.db.get_target(name)
 
-                    # Set rebuilt flag and reason
-                    if (words[4] + words[5]) == "wasupdated":
-                        x_target.set_rebuilt_dep(y_target)
+    def _parse_rebuilding_line(self, line):
+        """Parse a 'Rebuilding "<target>" ...' line."""
+        words = line.split()
+        assert words[0] == "Rebuilding"
 
-                    if debug_flag == True:
-                        print(x_target.rebuild_info)
+        rebuilt_target = self._target_from_quoted_name(words[1])
+        rebuilt_target.set_rebuilt()
 
-                elif (len(words) >=5 and words[0] == "Rebuilding" and
-                      (words[2] + words[3] + words[4]) == "itdoesn'texist"):
-                    x = words[1].split('\"')[1]
+        # First two words of the reason is enough to determine the target's
+        # fate.
+        reason_start = words[2:4]
+        if reason_start == ["it", "is"]: # ... older than <tgt>
+            # OUTDATED
+            assert words[4:6] == ["older", "than"]
+            reason_target = self._target_from_quoted_name(words[6])
+            rebuilt_target.set_rebuilt_dep(reason_target)
+            self._timestamp_chain_follows = True
+            self._timestamp_chain_owner = reason_target
+        elif reason_start[0] == "dependency": # ... <tgt> was updated
+            # UPDATE
+            assert words[4:6] == ["was", "updated"]
+            reason_target = self._target_from_quoted_name(words[3])
+            rebuilt_target.set_rebuilt_dep(reason_target)
+        elif reason_start == ["it", "was"]: # ... mentioned with '-t'
+            # TOUCHED
+            pass
+        elif reason_start == ["it", "doesn't"]: # ... exist
+            # MISSING
+            pass
+        elif reason_start == ["it", "depends"]: # ... on newer <tgt>
+            # NEEDTMP
+            assert words[4:6] == ["on", "newer"]
+            reason_target = self._target_from_quoted_name(words[6])
+            rebuilt_target.set_rebuilt_dep(reason_target)
+            self._timestamp_chain_follows = True
+            self._timestamp_chain_owner = reason_target
 
-                    # Add to database
-                    x_target = self.db.get_target(x)
+    def _parse_timestamp_line(self, line):
+        """Parse a '<target> inherits timestamp from ...' line."""
+        words = line.split()
+        assert words[1:4] == ["inherits", "timestamp", "from"]
 
-                    # Set rebuilt flag
-                    x_target.set_rebuilt()
-
-                    if debug_flag == True:
-                        print(x_target.rebuild_info)
-
-                elif (len(words) >=5 and words[0] == "Rebuilding" and
-                          (words[2] + words[3] + words[4]) == "isolderthan"):
-                    x = words[1].split('\"')[1]
-                    y = words[5].split('\"')[1]
-                    if debug_flag == True:
-                        print("rebuilt {} is older than dependency {}".format(x, y))
-
-                    # Add to database
-                    x_target = self.db.get_target(x)
-                    y_target = self.db.get_target(y)
-
-                    # Set rebuilt flag and reason
-                    x_target.set_rebuilt_dep(y_target)
-
-                    if debug_flag == True:
-                        print(x_target.rebuild_info)
+        chain = self._timestamp_chain_owner.timestamp_chain
+        parent_target = self._target_from_quoted_name(words[0])
+        child_target = self._target_from_quoted_name(words[4])
+        assert not chain or parent_target is chain[-1]
+        chain.append(child_target)
 
