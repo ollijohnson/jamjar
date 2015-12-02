@@ -61,6 +61,7 @@ class _BaseCmd(cmd.Cmd):
 
     def do_EOF(self, arg):
         """Handle EOF (AKA ctrl-d)."""
+        print("")
         return self.do_exit(None)
 
     def do_exit(self, arg):
@@ -87,21 +88,10 @@ class UI(_BaseCmd):
             for idx, target in enumerate(target_list):
                 print("({}) {}".format(idx , target))
             self.flush_pager()
-            while True:
-                choice = input("Choose target (range 0:{}): ".format(
-                                                        len(target_list) - 1))
-                # Exit target selection on empty input.
-                if not choice:
-                    return
-                try:
-                    target_index = int(choice)
-                    check = target_list[target_index]
-                except (ValueError, IndexError):
-                    pass
-                else:
-                    break
-
-            TargetSubmode(target=target_list[target_index], paging_on=self.paging_on).cmdloop()
+            target_index = self._target_selection(target_list)
+            if target is not None:
+                TargetSubmode(target=target,
+                              paging_on=self.paging_on).cmdloop()
 
     def do_rebuilt_targets(self, target_string):
         """Get information about targets that were rebuilt matching a regex."""
@@ -114,20 +104,32 @@ class UI(_BaseCmd):
             for idx, target in enumerate(target_list):
                 print("({}) {}".format(idx , target))
             self.flush_pager()
-            while True:
+            target = self._target_selection(target_list)
+            if target is not None:
+                TargetSubmode(target=target,
+                              paging_on=self.paging_on).cmdloop()
+
+    def _target_selection(self, targets):
+        target = None
+        while True:
+            try:
                 choice = input("Choose target (range 0:{}): ".format(
-                                                        len(target_list) - 1))
-                # Exit target selection on empty input.
-                if not choice:
-                    return
-                try:
-                    target_index = int(choice)
-                    check = target_list[target_index]
-                except (ValueError, IndexError):
-                    pass
-                else:
-                    break
-            TargetSubmode(target=target_list[target_index],paging_on=self.paging_on).cmdloop()
+                    len(targets) - 1))
+            except EOFError:
+                print("")
+                break
+            # Exit target selection on empty input.
+            if not choice:
+                break
+            try:
+                target_index = int(choice)
+                target = targets[target_index]
+            except (ValueError, IndexError):
+                pass
+            else:
+                break
+        return target
+
 
 class TargetSubmode(_BaseCmd):
     def __init__(self, target, *, paging_on):
