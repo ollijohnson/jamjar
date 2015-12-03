@@ -85,10 +85,7 @@ class UI(_BaseCmd):
         elif len(target_list) == 1:
             TargetSubmode(target=target_list[0], paging_on=self.paging_on).cmdloop()
         else:
-            for idx, target in enumerate(target_list):
-                print("({}) {}".format(idx , target))
-            self.flush_pager()
-            target_index = self._target_selection(target_list)
+            target = self._target_selection(target_list)
             if target is not None:
                 TargetSubmode(target=target,
                               paging_on=self.paging_on).cmdloop()
@@ -101,15 +98,16 @@ class UI(_BaseCmd):
         elif len(target_list) == 1:
             TargetSubmode(target=target_list[0], paging_on=self.paging_on).cmdloop()
         else:
-            for idx, target in enumerate(target_list):
-                print("({}) {}".format(idx , target))
-            self.flush_pager()
             target = self._target_selection(target_list)
             if target is not None:
                 TargetSubmode(target=target,
                               paging_on=self.paging_on).cmdloop()
 
     def _target_selection(self, targets):
+        for idx, target in enumerate(targets):
+            print("({}) {}".format(idx , target))
+        self.flush_pager()
+
         target = None
         while True:
             try:
