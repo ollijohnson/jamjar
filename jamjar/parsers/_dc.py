@@ -26,33 +26,36 @@ class DCParser(BaseParser):
     _timestamp_chain_owner = None
 
     def parse_logfile(self, filename):
-        """
-        Function which will read log files with '-dc' debug output.
-
-        Currently can read:
-        Rebuilding x: dependency y was updated
-        Rebuilding x: it doesn't exist
-        """
-
-        debug_flag=False
-
+        """Parse '-dc' debug output from the file at the given path."""
         with open(filename) as f:
-            for line in f:
-                # Are there a series of timestamp lines to parse?
-                if self._timestamp_chain_follows:
-                    while line.split(maxsplit=1)[1].startswith(
-                                                    "inherits timestamp from"):
-                        self._parse_timestamp_line(line)
-                        try:
-                            line = next(f)
-                        except StopIteration:
-                            break
-                    self._timestamp_chain_follows = False
-                    self._timestamp_chain_owner = None
+            self._parse(f)
 
-                line = line.strip()
-                if line.startswith("Rebuilding"):
-                    self._parse_rebuilding_line(line)
+    def _parse(self, lines):
+        """
+        Parse debug from an iterable of lines.
+
+        This is separated out from parse_logfile for testing purposes.
+
+        """
+        # Make sure we have an iterator so it can be advanced manually when
+        # required.
+        lines = iter(lines)
+        for line in lines:
+            # Are there a series of timestamp lines to parse?
+            if self._timestamp_chain_follows:
+                while line.split(maxsplit=1)[1].startswith(
+                                                "inherits timestamp from"):
+                    self._parse_timestamp_line(line)
+                    try:
+                        line = next(lines)
+                    except StopIteration:
+                        break
+                self._timestamp_chain_follows = False
+                self._timestamp_chain_owner = None
+
+            line = line.strip()
+            if line.startswith("Rebuilding"):
+                self._parse_rebuilding_line(line)
 
     def _strip_quoted_target(self, word):
         """Strip quotes from a target name."""
@@ -65,6 +68,14 @@ class DCParser(BaseParser):
         """Obtain a target object from a quoted name."""
         name = self._strip_quoted_target(word)
         return self.db.get_target(name)
+
+    def _expect_timestamp_chain(self, target):
+        """Set up state for handling a timestamp chain on target next."""
+        # Only parse the first chain for any given target.
+        if target.timestamp_chain is None:
+            target.timestamp_chain = []
+            self._timestamp_chain_follows = True
+            self._timestamp_chain_owner = target
 
     def _parse_rebuilding_line(self, line):
         """Parse a 'Rebuilding "<target>" ...' line."""
@@ -82,8 +93,7 @@ class DCParser(BaseParser):
             assert words[4:6] == ["older", "than"]
             reason_target = self._target_from_quoted_name(words[6])
             rebuilt_target.set_rebuilt_dep(reason_target)
-            self._timestamp_chain_follows = True
-            self._timestamp_chain_owner = reason_target
+            self._expect_timestamp_chain(reason_target)
         elif reason_start[0] == "dependency": # ... <tgt> was updated
             # UPDATE
             assert words[4:6] == ["was", "updated"]
@@ -100,8 +110,7 @@ class DCParser(BaseParser):
             assert words[4:6] == ["on", "newer"]
             reason_target = self._target_from_quoted_name(words[6])
             rebuilt_target.set_rebuilt_dep(reason_target)
-            self._timestamp_chain_follows = True
-            self._timestamp_chain_owner = reason_target
+            self._expect_timestamp_chain(reason_target)
 
     def _parse_timestamp_line(self, line):
         """Parse a '<target> inherits timestamp from ...' line."""

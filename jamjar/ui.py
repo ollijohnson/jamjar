@@ -176,7 +176,7 @@ class TargetSubmode(_BaseCmd):
         self._print_targets(self.target.incs)
         print("included by:")
         self._print_targets(self.target.incs_rev)
-        if self.target.timestamp_chain:
+        if self.target.timestamp_chain is not None:
             print("timestamp:", self.target.timestamp_chain[-1].timestamp)
             print("timestamp inherited from:")
             self._print_targets(self.target.timestamp_chain)

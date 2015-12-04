@@ -93,7 +93,7 @@ class Target:
         self.binding = None
         self.rebuilt = False
         self.rebuild_info = RebuildInfo()
-        self.timestamp_chain = []
+        self.timestamp_chain = None
 
     def __repr__(self):
         return "{}({})".format(type(self).__name__, self.name)
