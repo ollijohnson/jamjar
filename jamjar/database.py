@@ -171,6 +171,7 @@ class Target:
         self.rebuild_info.reason = "Dependency updated"
         self.rebuild_info.dep = dep
 
+
 class RebuildInfo:
     """
     Class containing information related to rebuilds
@@ -180,7 +181,6 @@ class RebuildInfo:
         self.dep = None
 
     def __repr__(self):
-        if self.reason != None and self.dep != None:
-            return("{}: {}".format(self.reason, self.dep))
-        else:
-            return(self.reason)
+        return "{}(reason={}, dep={})".format(
+            type(self).__name__, self.reason, self.dep)
+
