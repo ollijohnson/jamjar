@@ -79,7 +79,11 @@ class UI(_BaseCmd):
 
     def do_targets(self, target_string):
         """Get information about targets matching a regex."""
-        target_list = list(self.database.find_targets(target_string))
+        try:
+            target_list = list(self.database.find_targets(target_string))
+        except:
+            print("Invalid target string")
+            return
         if len(target_list) == 0:
             print("No targets found")
         elif len(target_list) == 1:
@@ -92,7 +96,11 @@ class UI(_BaseCmd):
 
     def do_rebuilt_targets(self, target_string):
         """Get information about targets that were rebuilt matching a regex."""
-        target_list = list(self.database.find_rebuilt_targets(target_string))
+        try:
+            target_list = list(self.database.find_rebuilt_targets(target_string))
+        except:
+            print("Invalid target string")
+            return
         if len(target_list) == 0:
             print("No targets found")
         elif len(target_list) == 1:
@@ -176,7 +184,8 @@ class TargetSubmode(_BaseCmd):
         self._print_targets(self.target.incs)
         print("included by:")
         self._print_targets(self.target.incs_rev)
-        if self.target.timestamp_chain is not None:
+        if (self.target.timestamp_chain is not None and
+            len(self.target.timestamp_chain) > 0):
             print("timestamp:", self.target.timestamp_chain[-1].timestamp)
             print("timestamp inherited from:")
             self._print_targets(self.target.timestamp_chain)
