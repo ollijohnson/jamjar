@@ -40,8 +40,11 @@ class Database:
     def find_targets(self, name_regex):
         """Iterator that yields all targets whose name matches a regex."""
         for name, target in self._targets.items():
-            if re.search(name_regex, name):
-                yield target
+            try:
+                if re.search(name_regex, name):
+                    yield target
+            except re.error as e:
+                raise ValueError(str(e))
 
     def find_rebuilt_targets(self, name_regex):
         """Iterator that yields all targets whose name matches a regex and

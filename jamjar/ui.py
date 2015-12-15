@@ -81,8 +81,8 @@ class UI(_BaseCmd):
         """Get information about targets matching a regex."""
         try:
             target_list = list(self.database.find_targets(target_string))
-        except:
-            print("Invalid target string")
+        except ValueError as e:
+            print("Invalid target string: {}".format(str(e)))
             return
         if len(target_list) == 0:
             print("No targets found")
@@ -98,8 +98,8 @@ class UI(_BaseCmd):
         """Get information about targets that were rebuilt matching a regex."""
         try:
             target_list = list(self.database.find_rebuilt_targets(target_string))
-        except:
-            print("Invalid target string")
+        except ValueError as e:
+            print("Invalid target string: {}".format(str(e)))
             return
         if len(target_list) == 0:
             print("No targets found")
