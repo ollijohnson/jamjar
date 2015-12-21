@@ -20,6 +20,19 @@ class _BaseCmd(cmd.Cmd):
         else:
             self.turn_paging_off()
 
+    def onecmd(self, line):
+        """
+        Execute a single command.
+
+        This is overridden to allow ctrl-c to interrupt long-running commands,
+        without exiting.
+
+        """
+        try:
+            super().onecmd(line)
+        except KeyboardInterrupt:
+            pass
+
     def turn_paging_on(self):
         self.paging_on = True
 
@@ -35,7 +48,6 @@ class _BaseCmd(cmd.Cmd):
         if self.paging_on:
             self.out = io.StringIO()
             sys.stdout = self.out
-
 
     def postcmd(self, stop, line):
         self.flush_pager()
