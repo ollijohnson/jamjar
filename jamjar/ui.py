@@ -29,7 +29,7 @@ class _BaseCmd(cmd.Cmd):
 
         """
         try:
-            super().onecmd(line)
+            return super().onecmd(line)
         except KeyboardInterrupt:
             pass
 
