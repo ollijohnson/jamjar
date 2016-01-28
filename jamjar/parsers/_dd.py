@@ -27,7 +27,7 @@ class DDParser(BaseParser):
         Depends x:y
         Includes x:y """
 
-        with open(filename) as f:
+        with open(filename, errors="ignore") as f:
             for line in f:
                 # Depending on the first word, add the relevant information to the database
                 #

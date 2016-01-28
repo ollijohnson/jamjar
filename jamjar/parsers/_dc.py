@@ -27,7 +27,7 @@ class DCParser(BaseParser):
 
     def parse_logfile(self, filename):
         """Parse '-dc' debug output from the file at the given path."""
-        with open(filename) as f:
+        with open(filename, errors="ignore") as f:
             self._parse(f)
 
     def _parse(self, lines):
