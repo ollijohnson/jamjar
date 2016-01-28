@@ -48,7 +48,7 @@ class DMParser(BaseParser):
            the DB"""
         # Open the file
         try:
-            f = open(filename)
+            f = open(filename, errors="ignore")
         except:
             # The file cannot be opened.
             print("Unable to open file %s" % filename)
