@@ -308,7 +308,7 @@ class TargetSubmode(_BaseCmd):
                 print("    {}".format(rule_name))
         if "other" in self.target.rule_calls:
             print("higher ordered target in:")
-            for rule_name in self.target.rule_call["other"]:
+            for rule_name in self.target.rule_calls["other"]:
                 print("    {}".format(rule_name))
         if (self.target.timestamp_chain is not None and
                 len(self.target.timestamp_chain) > 0):
