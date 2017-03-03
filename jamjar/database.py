@@ -269,7 +269,7 @@ class Rule:
         Add information about the call of a rule with a list of string
         containing the argument list (colon seperated as in jam)
         """
-        new_rule = RuleCall(self, db, arg_list)
+        new_rule = RuleCall(self, db, arg_list, len(self.calls))
         self.calls.append(new_rule)
         return new_rule
 
@@ -282,18 +282,32 @@ class RuleCall:
 
         Rule object that this is a call of
 
+    .. attribute:: caller
+
+        RuleCall object from which this rule call was made
+
+    .. attribute:: sub_calls
+
+        list of RuleCall objects made from this rule call
+
     .. attribute:: args
 
         List of the used arguments for this call.
         Each argument is a list of Target objects.
 
+    .. attribute:: id_number
+
+        The id number assigned to this rule call.
+        Used to distinguish between calls to the same rule.
+
     """
-    def __init__(self, rule, db, arg_list):
+    def __init__(self, rule, db, arg_list, number):
         self.rule = rule
         self.caller = None
         self.sub_calls = list()
         self.args = list()
         self.args.append(list())
+        self.id_number = number
         arg_index = 0
         for element in arg_list:
             if element == ":":
@@ -310,12 +324,24 @@ class RuleCall:
                     target.add_rule_call("other", self)
 
     def __repr__(self):
-        if len(self.args[0]) > 1:
-            return "{} {} ...".format(self.rule.name, self.args[0][0].brief_name())
-        if len(self.args[0]) == 1:
-            return "{} {}".format(self.rule.name, self.args[0][0].brief_name())
-        else:
-            return "{}".format(self.rule.name)
+        return self.get_as_string()
+
+    def get_id(self):
+        """ Get the ID string for this rule call """
+        return "{}#{}".format(self.rule.name, self.id_number)
+
+    def get_as_string(self):
+        """ Get the string for this rule call showing all arguments in full """
+        arg_strings = list()
+        for arg in self.args:
+            arg_string = ""
+            for target in arg:
+                arg_string = arg_string + " " + target.brief_name()
+            arg_strings.append(arg_string)
+        full_string = " :".join(arg_strings)
+        full_string = self.get_id() + full_string
+
+        return "{}".format(full_string)
 
     def set_caller(self, caller):
         """

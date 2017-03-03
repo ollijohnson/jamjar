@@ -219,13 +219,14 @@ class UI(_BaseCmd):
                 break
         return rule
 
-
-class TargetSubmode(_BaseCmd):
-    """ Submode to interact with a particular target """
-    def __init__(self, target, *, paging_on, db=None):
+class Submode(_BaseCmd):
+    """
+    Submode class for all submodes to inherit from
+    This class provides utilities common to submodes that are not wanted
+    for the base level UI.
+    """
+    def __init__(self, paging_on, db):
         super().__init__(paging_on)
-        self.target = target
-        self.prompt = self.format_prompt(self.target.brief_name(), "green")
         self.database = db
 
     def do_switch_to_target(self, target_string):
@@ -235,25 +236,93 @@ class TargetSubmode(_BaseCmd):
         except ValueError as err:
             print("Invalid target string: {}".format(str(err)))
             return
-        if len(target_list) == 0:
-            print("No targets found")
-        elif len(target_list) == 1:
-            TargetSubmode(target=target_list[0],
+
+        target = None
+        for targ in target_list:
+            if targ.name == target_string:
+                target = targ
+        if target != None:
+            TargetSubmode(target=target,
                           paging_on=self.paging_on,
                           db=self.database).cmdloop()
             return True
         else:
-            target = None
-            for targ in target_list:
-                if targ.name == target_string:
-                    target = targ
-            if target != None:
-                TargetSubmode(target=target,
-                              paging_on=self.paging_on,
-                              db=self.database).cmdloop()
-                return True
-            else:
-                print("Target {} not found".format(target_string))
+            print("Target {} not found".format(target_string))
+
+    def do_switch_to_rule(self, rule_string):
+        """Switch to the RuleSubmode for the specified rule"""
+        try:
+            rule_list = list(self.database.find_rules(rule_string))
+        except ValueError as err:
+            print("Invalid rule string: {}".format(str(err)))
+            return
+
+        matching_rule = None
+        for rule in rule_list:
+            if rule.name == rule_string:
+                matching_rule = rule
+        if matching_rule != None:
+            RuleSubmode(rule=matching_rule,
+                        paging_on=self.paging_on,
+                        db=self.database).cmdloop()
+            return True
+        else:
+            print("Rule {} not found".format(rule_string))
+
+    def do_switch_to_rulecall(self, rulecall_string):
+        """
+        Switch to the RuleCallSubmode for the specified rulecall
+        usage: switch_to_rulecall ExampleRule#81
+        """
+        if rulecall_string.count('#') != 1:
+            # Check the argument is of valid format
+            print("Invalid format (too many #'s), should match: ExampleRule#81")
+            return
+
+        rule_string, id_string = rulecall_string.split('#')
+        rule_string = rule_string.strip()
+        id_string = id_string.strip()
+
+        if not id_string.isdigit():
+            # Invalid id specified
+            print("Invalid format (id not a number), should match: ExampleRule#81")
+            return
+
+        try:
+            rule_list = list(self.database.find_rules(rule_string))
+        except ValueError as err:
+            print("Invalid rule part of string: {}".format(str(err)))
+            return
+
+        matching_rule = None
+        for rule in rule_list:
+            if rule.name == rule_string:
+                matching_rule = rule
+        if matching_rule is None:
+            print("Rule {} not found".format(rule_string))
+            return
+
+        call = None
+        try:
+            call_index = int(id_string)
+            call = matching_rule.calls[call_index]
+        except (ValueError, IndexError):
+            print("Invalid id part of string:")
+            print("{} is not an existing id for rule {}".format(id_string, rule_string))
+            return
+
+        RuleCallSubmode(call=call,
+                        paging_on=self.paging_on,
+                        db=self.database).cmdloop()
+        return True
+
+
+class TargetSubmode(Submode):
+    """ Submode to interact with a particular target """
+    def __init__(self, target, *, paging_on, db=None):
+        super().__init__(paging_on, db)
+        self.target = target
+        self.prompt = self.format_prompt(self.target.brief_name(), "green")
 
     def do_deps(self, arg):
         """
@@ -357,40 +426,12 @@ class TargetSubmode(_BaseCmd):
         for target in targets:
             print("    {}".format(target.name))
 
-class RuleSubmode(_BaseCmd):
+class RuleSubmode(Submode):
     """ Submode to interact with a jam rule """
     def __init__(self, rule, *, paging_on, db=None):
-        super().__init__(paging_on)
+        super().__init__(paging_on, db)
         self.rule = rule
-        self.database = db
         self.prompt = self.format_prompt(self.rule.name, "green")
-
-    def do_switch_to_target(self, target_string):
-        """Switch to the TargetSubmode for the specified target"""
-        try:
-            target_list = list(self.database.find_targets(target_string))
-        except ValueError as err:
-            print("Invalid target string: {}".format(str(err)))
-            return
-        if len(target_list) == 0:
-            print("No targets found")
-        elif len(target_list) == 1:
-            TargetSubmode(target=target_list[0],
-                          paging_on=self.paging_on,
-                          db=self.database).cmdloop()
-            return True
-        else:
-            target = None
-            for targ in target_list:
-                if targ.name == target_string:
-                    target = targ
-            if target != None:
-                TargetSubmode(target=target,
-                              paging_on=self.paging_on,
-                              db=self.database).cmdloop()
-                return True
-            else:
-                print("Target {} not found".format(target_string))
 
     def do_show(self, arg):
         """Dump all available information for this rule."""
@@ -427,13 +468,12 @@ class RuleSubmode(_BaseCmd):
                             paging_on=self.paging_on).cmdloop()
 
 
-class RuleCallSubmode(_BaseCmd):
+class RuleCallSubmode(Submode):
     """ Submode to interact with a particular rule call """
     def __init__(self, call, *, paging_on, db=None):
-        super().__init__(paging_on)
+        super().__init__(paging_on, db)
         self.call = call
-        self.database = db
-        self.prompt = self.format_prompt(self.call, "green")
+        self.prompt = self.format_prompt(self.call.get_id(), "green")
 
     def do_show(self, arg):
         """Dump all available information about this rule call"""
